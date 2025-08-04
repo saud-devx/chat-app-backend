@@ -47,11 +47,18 @@ app.get('/messages', async (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: ['http://localhost:4200', 'https://chat-app-blond-eta.vercel.app'],
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
+// const io = new Server(server, {
+//   cors: {
+//     origin: allowedOrigins,
+//     methods: ['GET', 'POST'],
+//     credentials: true
+//   }
+// });
 
 // Socket.IO Events
 io.on('connection', (socket) => {
