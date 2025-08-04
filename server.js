@@ -5,11 +5,26 @@ const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const app = express();
-app.use(cors());
+
+// Allowed Frontend URLs
+const allowedOrigins = [
+  'http://localhost:4200',
+  'https://chat-app-blond-eta.vercel.app'
+];
+
+// CORS Middleware for REST APIs
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect('mongodb+srv://chatadmin:andashami928@chatapp.r1hsb71.mongodb.net/?retryWrites=true&w=majority&appName=chatapp', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect('mongodb+srv://chatadmin:andashami928@chatapp.r1hsb71.mongodb.net/?retryWrites=true&w=majority&appName=chatapp', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.error(err));
 
@@ -31,7 +46,11 @@ app.get('/messages', async (req, res) => {
 // Server & Socket.IO Setup
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 
 // Socket.IO Events
@@ -49,4 +68,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => console.log('Backend server running on port 3000'));
+// Start Server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Backend server running on port ${PORT}`));
