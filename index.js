@@ -42,7 +42,7 @@ if (!MONGO_URI) {
   console.error("Missing MONGO_URI. Set it in .env or Render env vars.");
   process.exit(1);
 }
-mongoose.connect(MONGO_URI)
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => {
     console.error("❌ MongoDB connection error:", err.message);

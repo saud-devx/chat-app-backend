@@ -8,6 +8,7 @@ router.get("/", async (req, res, next) => {
     const msgs = await Message.find().sort({ timestamp: 1 });
     res.json(msgs);
   } catch (e) { next(e); }
+  
 });
 
 module.exports = router;
