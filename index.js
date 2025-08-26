@@ -12,30 +12,30 @@ const server = http.createServer(app);
 // --- Allowed Origins for CORS (Render + Vercel) ---
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "")
   .split(",")
-  .map(s => s.trim())
+  .map((s) => s.trim().replace(/\/$/, "")) // strip trailing slash
   .filter(Boolean);
+
+function isAllowed(origin) {
+  if (!origin || ALLOWED_ORIGINS.length === 0) return true;
+  const clean = origin.replace(/\/$/, "");
+  return ALLOWED_ORIGINS.includes(clean);
+}
+
+app.use(express.json());
+app.use(
+  cors({
+    origin: (origin, cb) =>
+      isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS")),
+  })
+);
 
 const io = new Server(server, {
   cors: {
-    origin: (origin, cb) => {
-      if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
-        return cb(null, true);
-      }
-      cb(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET","POST"]
-  }
+    origin: (origin, cb) =>
+      isAllowed(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS")),
+    methods: ["GET", "POST"],
+  },
 });
-
-app.use(express.json());
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
-      return cb(null, true);
-    }
-    cb(new Error("Not allowed by CORS"));
-  }
-}));
 
 // --- MongoDB connect ---
 const { MONGO_URI } = process.env;
@@ -43,9 +43,10 @@ if (!MONGO_URI) {
   console.error("Missing MONGO_URI. Set it in .env or Render env vars.");
   process.exit(1);
 }
-mongoose.connect(MONGO_URI)
+mongoose
+  .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   });
