@@ -38,7 +38,7 @@ const io = new Server(server, {
 });
 
 // --- MongoDB connect ---
-const { MONGO_URI } = process.env;
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/chat-app";
 if (!MONGO_URI) {
   console.error("Missing MONGO_URI. Set it in .env or Render env vars.");
   process.exit(1);
