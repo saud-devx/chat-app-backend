@@ -17,10 +17,24 @@ function authMiddleware(req, res, next) {
   });
 }
 
-// Get messages (protected)
+// Get messages with pagination (protected)
 router.get("/", authMiddleware, async (req, res) => {
-  const msgs = await Message.find().sort({ timestamp: 1 }).limit(100);
-  res.json(msgs);
+  const { before, limit = 50 } = req.query;
+  const query = {};
+  if (before) {
+    query.timestamp = { $lt: new Date(before) };
+  }
+
+  try {
+    const msgs = await Message.find(query)
+      .sort({ timestamp: -1 }) // Latest first for efficient limit
+      .limit(parseInt(limit));
+    
+    // Return in chronological order
+    res.json(msgs.reverse());
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;

@@ -102,8 +102,11 @@ io.on("connection", async (socket) => {
 
       // Emit new message to others
       socket.broadcast.emit("newMessage", newMsg);
-      // Acknowledge back to sender
-      socket.emit("message_ack", newMsg); 
+      
+      // Acknowledge back to sender with localId for optimistic UI sync
+      const ackPayload = newMsg.toObject();
+      ackPayload.localId = msg.localId;
+      socket.emit("message_ack", ackPayload); 
     } catch (e) {
       console.error("sendMessage error:", e.message);
     }

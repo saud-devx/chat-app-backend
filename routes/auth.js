@@ -66,4 +66,11 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// POST /auth/logout
+router.post("/logout", (req, res) => {
+  // In a stateless JWT setup, we mainly clear the token on the frontend.
+  // This endpoint can be used for server-side logic (e.g., status updates)
+  res.json({ message: "Logout successful" });
+});
+
 module.exports = router;
