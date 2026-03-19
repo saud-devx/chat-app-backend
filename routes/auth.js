@@ -35,7 +35,20 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const isMatch = await argon2.verify(user.password, password);
+    let isMatch = false;
+
+    // Support existing accounts on the live DB that use plain text passwords
+    if (!user.password.startsWith("$argon2")) {
+      if (user.password === password) {
+        isMatch = true;
+        // Transparently upgrade the user's password to argon2
+        user.password = await argon2.hash(password);
+        await user.save();
+      }
+    } else {
+      isMatch = await argon2.verify(user.password, password);
+    }
+
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
