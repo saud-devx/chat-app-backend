@@ -19,7 +19,7 @@ function authMiddleware(req, res, next) {
 
 // Get messages (protected)
 router.get("/", authMiddleware, async (req, res) => {
-  const msgs = await Message.find().sort({ timestamp: 1 });
+  const msgs = await Message.find().sort({ timestamp: 1 }).limit(100);
   res.json(msgs);
 });
 

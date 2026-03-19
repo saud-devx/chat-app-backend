@@ -59,6 +59,7 @@ app.use("/auth", require("./routes/auth")); // NEW for login
 
 // --- Socket.IO with JWT Auth ---
 const Message = require("./models/Message");
+const User = require("./models/User");
 
 // Verify JWT on socket handshake
 io.use((socket, next) => {
@@ -72,27 +73,60 @@ io.use((socket, next) => {
   });
 });
 
-io.on("connection", (socket) => {
-  console.log("🔌 User connected:", socket.user.username);
+io.on("connection", async (socket) => {
+  const username = socket.user.username;
+  console.log("🔌 User connected:", username);
+
+  // Mark user online
+  await User.findOneAndUpdate({ username }, { isOnline: true });
+  io.emit("user_status", { username, isOnline: true });
+
+  // Disconnect event inside connection
+  socket.on("disconnect", async (reason) => {
+    console.log("🔌 User disconnected", username, reason);
+    await User.findOneAndUpdate({ username }, { isOnline: false, lastSeen: new Date() });
+    io.emit("user_status", { username, isOnline: false, lastSeen: new Date() });
+  });
 
   socket.on("sendMessage", async (msg) => {
     try {
       if (!msg.message) return;
 
       const newMsg = new Message({
-        sender: socket.user.username, // always from authenticated user
+        sender: username,
         message: msg.message,
+        status: "sent"
       });
       await newMsg.save();
 
-      io.emit("newMessage", newMsg); // broadcast to all
+      // Emit new message to others
+      socket.broadcast.emit("newMessage", newMsg);
+      // Acknowledge back to sender
+      socket.emit("message_ack", newMsg); 
     } catch (e) {
       console.error("sendMessage error:", e.message);
     }
   });
 
-  socket.on("disconnect", (reason) => {
-    console.log("🔌 User disconnected", socket.user.username, reason);
+  socket.on("typing_start", () => {
+    socket.broadcast.emit("typing_start", { username });
+  });
+
+  socket.on("typing_stop", () => {
+    socket.broadcast.emit("typing_stop", { username });
+  });
+
+  // Handle read receipts
+  socket.on("message_read", async (data) => {
+    // data should contain message IDs or the sender username
+    // We mark messages as read and broadcast the update
+    if (data.messageIds && data.messageIds.length > 0) {
+      await Message.updateMany(
+        { _id: { $in: data.messageIds } },
+        { $set: { status: "read" } }
+      );
+      io.emit("messages_read", { messageIds: data.messageIds, readBy: username });
+    }
   });
 });
 
