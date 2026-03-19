@@ -95,7 +95,8 @@ io.on("connection", async (socket) => {
       const newMsg = new Message({
         sender: username,
         message: msg.message,
-        status: "sent"
+        status: "sent",
+        replyTo: msg.replyTo
       });
       await newMsg.save();
 
@@ -114,6 +115,56 @@ io.on("connection", async (socket) => {
 
   socket.on("typing_stop", () => {
     socket.broadcast.emit("typing_stop", { username });
+  });
+
+  socket.on("edit_message", async (data) => {
+    try {
+      const msg = await Message.findOneAndUpdate(
+        { _id: data.messageId, sender: username, isDeleted: 'none' },
+        { $set: { message: data.newText, isEdited: true } },
+        { new: true }
+      );
+      if (msg) io.emit("message_edited", msg);
+    } catch (e) {
+      console.error(e);
+      
+    }
+  });
+
+  socket.on("delete_message", async (data) => {
+    try {
+      if (data.type === 'everyone') {
+        const msg = await Message.findOneAndUpdate(
+          { _id: data.messageId, sender: username },
+          { $set: { isDeleted: 'everyone', message: '🚫 This message was deleted' } },
+          { new: true }
+        );
+        if (msg) io.emit("message_deleted", msg);
+      } else if (data.type === 'for_me') {
+        const msg = await Message.findByIdAndUpdate(
+          data.messageId,
+          { $addToSet: { deletedFor: username } },
+          { new: true }
+        );
+        if (msg) socket.emit("message_deleted_forme", { messageId: data.messageId });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  socket.on("react_message", async (data) => {
+    try {
+      const msg = await Message.findById(data.messageId);
+      if (msg && msg.isDeleted === 'none') {
+        msg.reactions = msg.reactions.filter(r => r.username !== username);
+        if (data.emoji) msg.reactions.push({ username, emoji: data.emoji });
+        await msg.save();
+        io.emit("message_reacted", { messageId: data.messageId, reactions: msg.reactions });
+      }
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   // Handle read receipts
