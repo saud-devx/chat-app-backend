@@ -74,18 +74,18 @@ io.use((socket, next) => {
 });
 
 io.on("connection", async (socket) => {
-  const username = socket.user.username;
-  console.log("🔌 User connected:", username);
+  const email = socket.user.email;
+  console.log("🔌 User connected:", email);
 
   // Mark user online
-  await User.findOneAndUpdate({ username }, { isOnline: true });
-  io.emit("user_status", { username, isOnline: true });
+  await User.findOneAndUpdate({ email }, { isOnline: true });
+  io.emit("user_status", { email, isOnline: true });
 
   // Disconnect event inside connection
   socket.on("disconnect", async (reason) => {
-    console.log("🔌 User disconnected", username, reason);
-    await User.findOneAndUpdate({ username }, { isOnline: false, lastSeen: new Date() });
-    io.emit("user_status", { username, isOnline: false, lastSeen: new Date() });
+    console.log("🔌 User disconnected", email, reason);
+    await User.findOneAndUpdate({ email }, { isOnline: false, lastSeen: new Date() });
+    io.emit("user_status", { email, isOnline: false, lastSeen: new Date() });
   });
 
   socket.on("sendMessage", async (msg) => {
@@ -93,7 +93,7 @@ io.on("connection", async (socket) => {
       if (!msg.message) return;
 
       const newMsg = new Message({
-        sender: username,
+        sender: email,
         message: msg.message,
         status: "sent",
         replyTo: msg.replyTo
@@ -113,17 +113,17 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("typing_start", () => {
-    socket.broadcast.emit("typing_start", { username });
+    socket.broadcast.emit("typing_start", { email });
   });
 
   socket.on("typing_stop", () => {
-    socket.broadcast.emit("typing_stop", { username });
+    socket.broadcast.emit("typing_stop", { email });
   });
 
   socket.on("edit_message", async (data) => {
     try {
       const msg = await Message.findOneAndUpdate(
-        { _id: data.messageId, sender: username, isDeleted: 'none' },
+        { _id: data.messageId, sender: email, isDeleted: 'none' },
         { $set: { message: data.newText, isEdited: true } },
         { new: true }
       );
@@ -138,7 +138,7 @@ io.on("connection", async (socket) => {
     try {
       if (data.type === 'everyone') {
         const msg = await Message.findOneAndUpdate(
-          { _id: data.messageId, sender: username },
+          { _id: data.messageId, sender: email },
           { $set: { isDeleted: 'everyone', message: '🚫 This message was deleted' } },
           { new: true }
         );
@@ -146,7 +146,7 @@ io.on("connection", async (socket) => {
       } else if (data.type === 'for_me') {
         const msg = await Message.findByIdAndUpdate(
           data.messageId,
-          { $addToSet: { deletedFor: username } },
+          { $addToSet: { deletedFor: email } },
           { new: true }
         );
         if (msg) socket.emit("message_deleted_forme", { messageId: data.messageId });
@@ -160,8 +160,8 @@ io.on("connection", async (socket) => {
     try {
       const msg = await Message.findById(data.messageId);
       if (msg && msg.isDeleted === 'none') {
-        msg.reactions = msg.reactions.filter(r => r.username !== username);
-        if (data.emoji) msg.reactions.push({ username, emoji: data.emoji });
+        msg.reactions = msg.reactions.filter(r => r.email !== email);
+        if (data.emoji) msg.reactions.push({ email, emoji: data.emoji });
         await msg.save();
         io.emit("message_reacted", { messageId: data.messageId, reactions: msg.reactions });
       }
@@ -172,14 +172,14 @@ io.on("connection", async (socket) => {
 
   // Handle read receipts
   socket.on("message_read", async (data) => {
-    // data should contain message IDs or the sender username
+    // data should contain message IDs or the sender email
     // We mark messages as read and broadcast the update
     if (data.messageIds && data.messageIds.length > 0) {
       await Message.updateMany(
         { _id: { $in: data.messageIds } },
         { $set: { status: "read" } }
       );
-      io.emit("messages_read", { messageIds: data.messageIds, readBy: username });
+      io.emit("messages_read", { messageIds: data.messageIds, readBy: email });
     }
   });
 });
