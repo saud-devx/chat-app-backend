@@ -20,26 +20,15 @@ async function seed() {
     await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/chat-app");
     console.log("Connected to MongoDB for seeding...");
 
-    // Delete all users
-    await User.deleteMany({});
-    console.log("Deleted all existing users.");
-
-    // Drop legacy indexes
-    try {
-      await User.collection.dropIndexes();
-      console.log("Dropped legacy indexes.");
-    } catch (e) {
-      console.log("No indexes to drop or error dropping indexes (safe to ignore if collection is new).");
-    }
-
+    // Upsert users instead of deleting
     for (const u of users) {
       const hashedPassword = await argon2.hash(u.password);
-      const newUser = new User({
-        email: u.email.toLowerCase(),
-        password: hashedPassword
-      });
-      await newUser.save();
-      console.log(`Created user: ${u.email}`);
+      await User.findOneAndUpdate(
+        { email: u.email.toLowerCase() },
+        { password: hashedPassword },
+        { upsert: true, new: true }
+      );
+      console.log(`Upserted user: ${u.email}`);
     }
 
     console.log("Seeding completed successfully.");
