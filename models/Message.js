@@ -2,7 +2,13 @@ const mongoose = require("mongoose");
 
 const MessageSchema = new mongoose.Schema({
   sender: { type: String, required: true },
-  message: { type: String, required: true },
+  message: { type: String }, // Now optional if there's an image
+  imageUrl: { type: String },
+  imageMeta: {
+    width: Number,
+    height: Number,
+    thumbnailUrl: String
+  },
   status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
   isDeleted: { type: String, enum: ['everyone', 'none'], default: 'none' },
   deletedFor: [{ type: String }],

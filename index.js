@@ -8,6 +8,36 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 const server = http.createServer(app);
+const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// Multer Config
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images are allowed"));
+    }
+  },
+});
 
 // --- Allowed Origins for CORS (Render + Vercel) ---
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "")
@@ -22,6 +52,7 @@ function isAllowed(origin) {
 }
 
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(
   cors({
     origin: (origin, cb) =>
@@ -57,6 +88,30 @@ app.get("/health", (req, res) => res.json({ ok: true, time: new Date() }));
 app.use("/messages", require("./routes/messages"));
 app.use("/auth", require("./routes/auth")); // NEW for login
 
+// Image Upload Endpoint
+app.post("/upload", (req, res, next) => {
+  // Manual Auth Check for simple uploads
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token" });
+  jwt.verify(token, process.env.JWT_SECRET || "supersecret", (err, decoded) => {
+    if (err) return res.status(401).json({ error: "Invalid token" });
+    req.user = decoded;
+    next();
+  });
+}, upload.single("image"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+  
+  res.json({ 
+    url: imageUrl,
+    filename: req.file.filename,
+    mimetype: req.file.mimetype
+  });
+});
+
 // --- Socket.IO with JWT Auth ---
 const Message = require("./models/Message");
 const User = require("./models/User");
@@ -90,11 +145,13 @@ io.on("connection", async (socket) => {
 
   socket.on("sendMessage", async (msg) => {
     try {
-      if (!msg.message) return;
+      if (!msg.message && !msg.imageUrl) return;
 
       const newMsg = new Message({
         sender: email,
         message: msg.message,
+        imageUrl: msg.imageUrl,
+        imageMeta: msg.imageMeta,
         status: "sent",
         replyTo: msg.replyTo
       });
