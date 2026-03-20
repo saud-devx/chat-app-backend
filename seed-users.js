@@ -35,7 +35,7 @@ async function seed() {
     for (const u of users) {
       const hashedPassword = await argon2.hash(u.password);
       const newUser = new User({
-        email: u.email,
+        email: u.email.toLowerCase(),
         password: hashedPassword
       });
       await newUser.save();

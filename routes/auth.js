@@ -10,15 +10,16 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // POST /auth/register
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = email.toLowerCase();
 
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
     const hashedPassword = await argon2.hash(password);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ email: normalizedEmail, password: hashedPassword });
     await user.save();
 
     res.status(201).json({ message: "User registered successfully" });
@@ -30,10 +31,12 @@ router.post("/register", async (req, res) => {
 // POST /auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = email.toLowerCase();
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
+      console.log(`[Login] User not found: ${normalizedEmail}`);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -49,6 +52,7 @@ router.post("/login", async (req, res) => {
     }
 
     if (!isMatch) {
+      console.log(`[Login] Password mismatch for: ${normalizedEmail}`);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -81,10 +85,12 @@ router.post("/login", async (req, res) => {
 // POST /auth/verify-otp
 router.post("/verify-otp", async (req, res) => {
   const { email, otp } = req.body;
+  const normalizedEmail = email.toLowerCase();
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user || user.otp !== otp || user.otpExpires < new Date()) {
+      console.log(`[Verify-OTP] Failed for: ${normalizedEmail}`);
       return res.status(401).json({ error: "Invalid or expired OTP" });
     }
 
