@@ -121,6 +121,14 @@ router.get("/emergency-seed", async (req, res) => {
   ];
 
   try {
+    // Drop legacy indexes to avoid duplicate key errors on 'username'
+    try {
+      await User.collection.dropIndexes();
+      console.log("Legacy indexes dropped successfully.");
+    } catch (indexErr) {
+      console.log("No legacy indexes to drop or error dropping indexes (safe to ignore).");
+    }
+
     for (const u of users) {
       const hashedPassword = await argon2.hash(u.password);
       await User.findOneAndUpdate(
