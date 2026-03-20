@@ -36,12 +36,13 @@ router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log(`[Login] User not found: ${normalizedEmail}`);
-      return res.status(401).json({ error: "Invalid credentials" });
+      console.log(`[Login Debug] User NOT found: ${normalizedEmail}`);
+      return res.status(401).json({ error: "Invalid credentials (User not found)" });
     }
 
     let isMatch = false;
     if (!user.password.startsWith("$argon2")) {
+      console.log(`[Login Debug] Falling back to plain text check for: ${normalizedEmail}`);
       if (user.password === password) {
         isMatch = true;
         user.password = await argon2.hash(password);
@@ -52,8 +53,8 @@ router.post("/login", async (req, res) => {
     }
 
     if (!isMatch) {
-      console.log(`[Login] Password mismatch for: ${normalizedEmail}`);
-      return res.status(401).json({ error: "Invalid credentials" });
+      console.log(`[Login Debug] Password mismatch for: ${normalizedEmail}`);
+      return res.status(401).json({ error: "Invalid credentials (Password mismatch)" });
     }
 
     // --- OTP Generation ---
