@@ -12,8 +12,8 @@ async function seed() {
 
     await User.deleteMany({});
     await User.insertMany([
-      { username: "saud", password: "saud123" },
-      { username: "rabait", password: "rabait123" }
+      { email: "saud@gmail.com", password: "saud123" },
+      { email: "rabait@gmail.com", password: "rabait123" }
     ]);
 
     console.log("✅ Users seeded: saud / rabait");
