@@ -113,6 +113,28 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
+// GET /auth/emergency-seed (Temporary for diagnostics)
+router.get("/emergency-seed", async (req, res) => {
+  const users = [
+    { email: 'maryamawais.dev@gmail.com', password: 'maryam@928' },
+    { email: 'saud.devx@gmail.com', password: 'saud@928' }
+  ];
+
+  try {
+    for (const u of users) {
+      const hashedPassword = await argon2.hash(u.password);
+      await User.findOneAndUpdate(
+        { email: u.email.toLowerCase() },
+        { password: hashedPassword },
+        { upsert: true, new: true }
+      );
+    }
+    res.json({ message: "Emergency seeding successful! Maryam and Saud are ready." });
+  } catch (err) {
+    res.status(500).json({ error: "Seeding failed", details: err.message });
+  }
+});
+
 // POST /auth/logout
 router.post("/logout", (req, res) => {
   res.json({ message: "Logout successful" });
