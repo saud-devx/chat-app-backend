@@ -66,6 +66,7 @@ router.post("/login", async (req, res) => {
     await user.save();
 
     // --- Send OTP via Resend ---
+    console.log(`[OTP Debug] Sending OTP ${otp} to ${user.email}`);
     try {
       await resend.emails.send({
         from: 'ChatApp <onboarding@resend.dev>',
