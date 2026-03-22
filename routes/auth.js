@@ -36,8 +36,7 @@ router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log(`[Login Debug] User NOT found: ${normalizedEmail}`);
-      return res.status(401).json({ error: "Invalid credentials (User not found)" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     let isMatch = false;
@@ -53,8 +52,7 @@ router.post("/login", async (req, res) => {
     }
 
     if (!isMatch) {
-      console.log(`[Login Debug] Password mismatch for: ${normalizedEmail}`);
-      return res.status(401).json({ error: "Invalid credentials (Password mismatch)" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // --- OTP Generation ---
@@ -111,36 +109,6 @@ router.post("/verify-otp", async (req, res) => {
     res.json({ token, email: user.email, message: "User authenticated successfully with OTP" });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
-  }
-});
-
-// GET /auth/emergency-seed (Temporary for diagnostics)
-router.get("/emergency-seed", async (req, res) => {
-  const users = [
-    { email: 'maryamawais.dev@gmail.com', password: 'maryam@928' },
-    { email: 'saud.devx@gmail.com', password: 'saud@928' }
-  ];
-
-  try {
-    // Drop legacy indexes to avoid duplicate key errors on 'username'
-    try {
-      await User.collection.dropIndexes();
-      console.log("Legacy indexes dropped successfully.");
-    } catch (indexErr) {
-      console.log("No legacy indexes to drop or error dropping indexes (safe to ignore).");
-    }
-
-    for (const u of users) {
-      const hashedPassword = await argon2.hash(u.password);
-      await User.findOneAndUpdate(
-        { email: u.email.toLowerCase() },
-        { password: hashedPassword },
-        { upsert: true, new: true }
-      );
-    }
-    res.json({ message: "Emergency seeding successful! Maryam and Saud are ready." });
-  } catch (err) {
-    res.status(500).json({ error: "Seeding failed", details: err.message });
   }
 });
 
